@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Video to Sprite Sheets</title>
+</head>
+<body>
+  <h2>Video to Sprite Sheet Generator</h2>
+  <input type="file" accept="video/*" id="videoInput"><br>
+  <button onclick="processVideo()">Generate Spritesheets</button>
+  <div id="output"></div>
+
+  <video id="video" style="display:none;"></video>
+  <canvas id="canvas" width="1024" height="1024" style="display:none;"></canvas>
+
+  <script>
+    const FRAME_SIZE = 102.4;
+    const FRAMES_PER_SHEET = 100;
+    const SHEET_DIM = 10;
+
+    async function processVideo() {
+      const file = document.getElementById("videoInput").files[0];
+      if (!file) return alert("Please upload a video.");
+
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const outputDiv = document.getElementById("output");
+
+      video.src = URL.createObjectURL(file);
+      await video.play(); // Required to decode metadata
+
+      const duration = video.duration;
+      const totalFrames = FRAMES_PER_SHEET * 10;
+      const step = duration / totalFrames;
+
+      let currentFrame = 0;
+      for (let sheet = 0; sheet < 10; sheet++) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (let f = 0; f < FRAMES_PER_SHEET; f++) {
+          const t = (currentFrame * step);
+          video.currentTime = t;
+
+          await new Promise(resolve => {
+            video.onseeked = () => {
+              const x = (f % SHEET_DIM) * FRAME_SIZE;
+              const y = Math.floor(f / SHEET_DIM) * FRAME_SIZE;
+              ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, x, y, FRAME_SIZE, FRAME_SIZE);
+              resolve();
+            };
+          });
+
+          currentFrame++;
+        }
+
+        // Save the canvas to image
+        const img = new Image();
+        img.src = canvas.toDataURL("image/png");
+        outputDiv.appendChild(img);
+
+        const link = document.createElement("a");
+        link.href = img.src;
+        link.download = `spritesheet_${sheet + 1}.png`;
+        link.innerText = `Download Sheet ${sheet + 1}`;
+        outputDiv.appendChild(link);
+        outputDiv.appendChild(document.createElement("br"));
+      }
+
+      alert("All spritesheets generated!");
+    }
+  </script>
+</body>
+</html>
